@@ -6,7 +6,7 @@ import requests
 
 # Configuración inicial
 st.set_page_config(layout="wide", page_title="Indicadores Económicos de EE. UU.")
-st.title("Visualización de Indicadores Económicos de EE. UU.")
+#st.title("Visualización de Indicadores Económicos de EE. UU.")
 
 # Barra lateral para configuración
 st.sidebar.header("Configuración")
@@ -76,12 +76,12 @@ indicators = list(indicator_map.keys())
 selected_indicators = st.sidebar.multiselect("Selecciona los indicadores a visualizar", indicators, default=indicators)
 
 # Contenedor principal para gráficos
-st.markdown("### Visualización de Gráficos")
+#st.markdown("### Visualización de Gráficos")
 
 # Visualización de datos
 for indicator in selected_indicators:
     if indicator == "Curva de tasas (todos los periodos)":
-        st.subheader("Curva de Tasas - Todos los Periodos")
+        #st.subheader("Curva de Tasas - Todos los Periodos")
         yield_curve_data = pd.DataFrame()
         for period, series_id in indicator_map[indicator].items():
             data = get_fred_data(series_id, API_KEY, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
