@@ -6,7 +6,6 @@ import requests
 
 # Configuración inicial
 st.set_page_config(layout="wide", page_title="Indicadores Económicos de EE. UU.")
-#st.title("Visualización de Indicadores Económicos de EE. UU.")
 
 # Barra lateral para configuración
 st.sidebar.header("Configuración")
@@ -71,32 +70,35 @@ indicator_map = {
     "Inflación (IPC)": "CPIAUCSL",
 }
 
+# Series de tasas breakeven para 2 y 10 años
+breakeven_series = {
+    "Breakeven 2 años": "T5YIE",
+    "Breakeven 10 años": "T10YIE",
+}
+
 # Selección de indicadores en la barra lateral
 indicators = list(indicator_map.keys())
 selected_indicators = st.sidebar.multiselect("Selecciona los indicadores a visualizar", indicators, default=indicators)
 
-# Contenedor principal para gráficos
-#st.markdown("### Visualización de Gráficos")
-
 # Visualización de datos
 for indicator in selected_indicators:
     if indicator == "Curva de tasas (todos los periodos)":
-        #st.subheader("Curva de Tasas - Todos los Periodos")
+        #st.header("Curva de Tasas")
         yield_curve_data = pd.DataFrame()
         for period, series_id in indicator_map[indicator].items():
             data = get_fred_data(series_id, API_KEY, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
             if not data.empty:
-                data = data[["Fecha", "Valor"]].rename(columns={"Valor": period})  # Elimina columnas innecesarias
+                data = data[["Fecha", "Valor"]].rename(columns={"Valor": period})
                 data.set_index("Fecha", inplace=True)
                 if yield_curve_data.empty:
                     yield_curve_data = data
                 else:
                     yield_curve_data = yield_curve_data.join(data, how="outer")
-        
+
         if not yield_curve_data.empty:
-            fig = go.Figure()
+            fig_yield_curve = go.Figure()
             for period in yield_curve_data.columns:
-                fig.add_trace(
+                fig_yield_curve.add_trace(
                     go.Scatter(
                         x=yield_curve_data.index,
                         y=yield_curve_data[period],
@@ -104,7 +106,7 @@ for indicator in selected_indicators:
                         name=period
                     )
                 )
-            fig.update_layout(
+            fig_yield_curve.update_layout(
                 title="Curva de Tasas - Todos los Periodos",
                 xaxis_title="Fecha",
                 yaxis_title="Tasa (%)",
@@ -112,10 +114,72 @@ for indicator in selected_indicators:
                 hovermode="x unified",
                 template="plotly_white",
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig_yield_curve, use_container_width=True)
+
+            # Tasas breakeven
+            #st.header("Tasas Breakeven")
+            breakeven_data = pd.DataFrame()
+            for label, series_id in breakeven_series.items():
+                data = get_fred_data(series_id, API_KEY, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
+                if not data.empty:
+                    data = data[["Fecha", "Valor"]].rename(columns={"Valor": label})
+                    data.set_index("Fecha", inplace=True)
+                    if breakeven_data.empty:
+                        breakeven_data = data
+                    else:
+                        breakeven_data = breakeven_data.join(data, how="outer")
+
+            if not breakeven_data.empty:
+                fig_breakeven = go.Figure()
+                for label in breakeven_data.columns:
+                    fig_breakeven.add_trace(
+                        go.Scatter(
+                            x=breakeven_data.index,
+                            y=breakeven_data[label],
+                            mode="lines",
+                            name=label,
+                        )
+                    )
+                fig_breakeven.update_layout(
+                    title="Tasas Breakeven - 2 y 10 Años",
+                    xaxis_title="Fecha",
+                    yaxis_title="Tasa (%)",
+                    legend_title="Tipo",
+                    hovermode="x unified",
+                    template="plotly_white",
+                )
+                st.plotly_chart(fig_breakeven, use_container_width=True)
+
+                # Gráfico de diferencia (10 años - 2 años)
+                #st.header("Diferencia: 10 Años - 2 Años")
+                if "Breakeven 10 años" in breakeven_data and "Breakeven 2 años" in breakeven_data:
+                    breakeven_data["Diferencia"] = breakeven_data["Breakeven 10 años"] - breakeven_data["Breakeven 2 años"]
+                    fig_difference = go.Figure()
+                    fig_difference.add_trace(
+                        go.Scatter(
+                            x=breakeven_data.index,
+                            y=breakeven_data["Diferencia"],
+                            mode="lines",
+                            name="Diferencia (10 años - 2 años)",
+                            line=dict(color="red", width=2)
+                        )
+                    )
+                    fig_difference.update_layout(
+                        title="Diferencia: Tasa a 10 Años - Tasa a 2 Años",
+                        xaxis_title="Fecha",
+                        yaxis_title="Diferencia (%)",
+                        hovermode="x unified",
+                        template="plotly_white",
+                    )
+                    st.plotly_chart(fig_difference, use_container_width=True)
+                else:
+                    st.warning("No se encontraron datos suficientes para calcular la diferencia entre 10 años y 2 años.")
+            else:
+                st.warning("No se encontraron datos para las tasas breakeven en el rango de fechas seleccionado.")
         else:
-            st.warning("No se encontraron datos para la Curva de Tasas en el rango de fechas seleccionado.")
+            st.warning("No se encontraron datos para la curva de tasas en el rango de fechas seleccionado.")
     else:
+        #st.header(indicator)
         series_id = indicator_map[indicator]
         data = get_fred_data(series_id, API_KEY, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
         if not data.empty:
